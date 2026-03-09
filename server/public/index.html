@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>fleeting-chat</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<div id="app">
+  <div id="header">
+    <h1>fleeting-chat</h1>
+    <div id="header-right">
+      <div id="name-row">
+        Your name:
+        <input id="name-input" type="text" placeholder="Anonymous" maxlength="32">
+      </div>
+      <button id="settings-btn" title="Settings">⚙</button>
+    </div>
+    <div id="settings-panel">
+      <h3>Settings</h3>
+      <label class="setting-row">
+        <input type="checkbox" id="mirror-toggle" checked>
+        Mirror my camera
+      </label>
+      <label class="setting-row" style="margin-top:8px;">
+        <input type="checkbox" id="chat-toggle" checked>
+        Show chat
+      </label>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="video-area">
+      <div id="camera-error">
+        <div id="camera-error-banner">
+          <strong>Camera / mic not available.</strong>
+          <span>You can still use text chat. To enable video, grant access and click the button.</span>
+        </div>
+        <button id="enable-camera-btn">Enable Camera &amp; Mic</button>
+      </div>
+      <div id="video-grid"></div>
+    </div>
+    <div id="chat-panel">
+      <div id="chat-messages"></div>
+      <details id="format-help">
+        <summary>ℹ Formatting help</summary>
+        <table>
+          <tr><td>**bold**</td><td>Bold text</td></tr>
+          <tr><td>*italic*</td><td>Italic text</td></tr>
+          <tr><td>~~strike~~</td><td>Strikethrough</td></tr>
+          <tr><td>`code`</td><td>Inline code</td></tr>
+          <tr><td>```code```</td><td>Code block (use Shift+Enter for newlines)</td></tr>
+          <tr><td>> quote</td><td>Blockquote</td></tr>
+          <tr><td>[text](url)</td><td>Link</td></tr>
+          <tr><td>- item</td><td>Bullet list (use Shift+Enter for newlines)</td></tr>
+          <tr><td>1. item</td><td>Numbered list (use Shift+Enter for newlines)</td></tr>
+        </table>
+      </details>
+      <div id="chat-input-row">
+        <textarea id="chat-input" placeholder="Say something… (Shift+Enter for new line)" maxlength="500" rows="1"></textarea>
+        <button id="send-btn">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button class="ctrl-btn" id="mute-mic-btn">Mute Mic</button>
+    <button class="ctrl-btn" id="mute-cam-btn">Mute Cam</button>
+    <button class="ctrl-btn" id="share-screen-btn">Share Screen</button>
+    <button class="ctrl-btn" id="leave-btn">Leave</button>
+  </div>
+</div>
+
+<!-- Only shown after clicking Leave -->
+<div id="overlay">
+  <div id="overlay-box">
+    <h2>You have left the session</h2>
+    <p>Close this tab or refresh to start a new session.</p>
+  </div>
+</div>
+
+<script src="/marked.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

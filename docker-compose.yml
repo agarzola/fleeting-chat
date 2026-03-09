@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  fleeting-chat:
+    build: .
+    ports:
+      - "3000:3000"
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      - "5349:5349/tcp"
+    environment:
+      - PUBLIC_IP=${PUBLIC_IP:-}
+      - TURN_SECRET=${TURN_SECRET:-}
+    restart: unless-stopped
