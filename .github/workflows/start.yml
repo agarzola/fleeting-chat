@@ -78,7 +78,7 @@ jobs:
             cd /app/fleeting-chat
             docker build -t fleeting-chat .
             docker run -d \
-              -p 3000:3000 \
+              -p 80:3000 \
               -p 3478:3478/udp \
               -p 3478:3478/tcp \
               -p 5349:5349/tcp \
@@ -91,6 +91,6 @@ jobs:
         run: |
           echo "### fleeting-chat is live" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**URL:** http://${{ steps.ip.outputs.ip }}:3000" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** http://${{ steps.ip.outputs.ip }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Run the **Stop fleeting-chat** workflow when you're done." >> $GITHUB_STEP_SUMMARY
