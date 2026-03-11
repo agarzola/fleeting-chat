@@ -46,13 +46,20 @@ jobs:
 
       - name: Wait for SSH to be ready
         run: |
-          for i in $(seq 1 24); do
-            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
-              root@${{ steps.ip.outputs.ip }} exit 2>/dev/null && break
-            echo "Waiting for SSH… ($i/24)"
+          IP=${{ steps.ip.outputs.ip }}
+          for i in $(seq 1 36); do
+            if ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@$IP exit 2>/dev/null; then
+              echo "SSH is ready."
+              break
+            fi
+            if [ "$i" -eq 36 ]; then
+              echo "SSH did not become ready in time."
+              exit 1
+            fi
+            echo "Waiting for SSH… ($i/36)"
             sleep 5
           done
-          ssh-keyscan -H ${{ steps.ip.outputs.ip }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H $IP >> ~/.ssh/known_hosts
 
       - name: Deploy
         env:
