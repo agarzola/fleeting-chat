@@ -26,7 +26,7 @@ jobs:
         if: steps.check.outputs.exists == 'false'
         run: |
           doctl compute droplet create fleeting-chat \
-            --image docker-20-04 \
+            --image ubuntu-24-04 \
             --size s-1vcpu-1gb \
             --region nyc3 \
             --ssh-keys ${{ secrets.DO_SSH_KEY_ID }} \
@@ -61,48 +61,43 @@ jobs:
           done
 
       - name: Deploy
-        env:
-          IP: ${{ steps.ip.outputs.ip }}
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@$IP bash -s << 'EOF'
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            root@${{ steps.ip.outputs.ip }} \
+            bash -s "${{ steps.ip.outputs.ip }}" "${{ github.repository }}" << 'ENDSSH'
             set -e
-            if docker ps -q -f name=fleeting-chat | grep -q .; then
-              echo "Container already running, nothing to do."
-              exit 0
-            fi
+            IP=$1
+            REPO=$2
+            apt-get install -y -q git
             if [ ! -d /app/fleeting-chat ]; then
-              git clone https://github.com/${{ github.repository }} /app/fleeting-chat
+              git clone "https://github.com/${REPO}" /app/fleeting-chat
             else
               git -C /app/fleeting-chat pull
             fi
-            cd /app/fleeting-chat
-            docker build -t fleeting-chat .
-            docker run -d \
-              -p 80:3000 \
-              -p 3478:3478/udp \
-              -p 3478:3478/tcp \
-              -p 5349:5349/tcp \
-              -e PUBLIC_IP=$IP \
-              --name fleeting-chat \
-              fleeting-chat
-          EOF
+            chmod +x /app/fleeting-chat/scripts/setup.sh
+            /app/fleeting-chat/scripts/setup.sh "$IP"
+          ENDSSH
 
       - name: Verify deployment
-        env:
-          IP: ${{ steps.ip.outputs.ip }}
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@$IP bash -s << 'EOF'
-            echo "=== docker ps ==="
-            docker ps -a --filter name=fleeting-chat
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            root@${{ steps.ip.outputs.ip }} bash -s << 'ENDSSH'
+            echo "=== coturn ==="
+            systemctl is-active coturn || true
             echo ""
-            echo "=== docker logs ==="
-            docker logs fleeting-chat 2>&1 | tail -30
-          EOF
+            echo "=== fleeting-chat ==="
+            systemctl is-active fleeting-chat || true
+            echo ""
+            echo "=== logs ==="
+            journalctl -u fleeting-chat --no-pager -n 20
+          ENDSSH
 
       - name: Print URL
         run: |
           echo "### fleeting-chat is live" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**URL:** http://${{ steps.ip.outputs.ip }}" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** https://${{ steps.ip.outputs.ip }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> **Note:** Your browser will warn about a self-signed certificate. Proceed past the warning to use the app." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Run the **Stop fleeting-chat** workflow when you're done." >> $GITHUB_STEP_SUMMARY

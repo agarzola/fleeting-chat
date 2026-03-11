@@ -2,12 +2,19 @@
 
 const express = require('express');
 const http = require('http');
+const https = require('https');
 const crypto = require('crypto');
+const fs = require('fs');
 const path = require('path');
 const { Server } = require('socket.io');
 
 const app = express();
-const server = http.createServer(app);
+
+const certPath = process.env.TLS_CERT;
+const keyPath = process.env.TLS_KEY;
+const server = (certPath && keyPath)
+  ? https.createServer({ cert: fs.readFileSync(certPath), key: fs.readFileSync(keyPath) }, app)
+  : http.createServer(app);
 const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
