@@ -4,11 +4,9 @@ set -e
 IP=$1
 
 # ── Wait for cloud-init / unattended-upgrades to release apt lock ────────
-systemd-run --property="After=apt-daily.service apt-daily-upgrade.service" \
-  --wait /bin/true 2>/dev/null || true
-while fuser /var/lib/dpkg/lock-frontend > /dev/null 2>&1; do
+while ! apt-get -q --yes --dry-run upgrade > /dev/null 2>&1; do
   echo "Waiting for apt lock…"
-  sleep 3
+  sleep 5
 done
 
 # ── System packages ──────────────────────────────────────────────────────
