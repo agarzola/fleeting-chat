@@ -50,7 +50,7 @@ jobs:
           for i in $(seq 1 36); do
             if ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@$IP exit 2>/dev/null; then
               echo "SSH is ready."
-              break
+              exit 0
             fi
             if [ "$i" -eq 36 ]; then
               echo "SSH did not become ready in time."
@@ -59,13 +59,12 @@ jobs:
             echo "Waiting for SSH… ($i/36)"
             sleep 5
           done
-          ssh-keyscan -H $IP >> ~/.ssh/known_hosts
 
       - name: Deploy
         env:
           IP: ${{ steps.ip.outputs.ip }}
         run: |
-          ssh root@$IP bash -s << 'EOF'
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@$IP bash -s << 'EOF'
             set -e
             if docker ps -q -f name=fleeting-chat | grep -q .; then
               echo "Container already running, nothing to do."
