@@ -3,6 +3,14 @@ set -e
 
 IP=$1
 
+# ── Wait for cloud-init / unattended-upgrades to release apt lock ────────
+systemd-run --property="After=apt-daily.service apt-daily-upgrade.service" \
+  --wait /bin/true 2>/dev/null || true
+while fuser /var/lib/dpkg/lock-frontend > /dev/null 2>&1; do
+  echo "Waiting for apt lock…"
+  sleep 3
+done
+
 # ── System packages ──────────────────────────────────────────────────────
 apt-get update -q
 apt-get install -y -q curl coturn openssl
