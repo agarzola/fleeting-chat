@@ -1,7 +1,7 @@
 FROM node:24-alpine
 
 # Install coturn and envsubst (gettext)
-RUN apk add --no-cache coturn
+RUN apk add --no-cache coturn openssl
 
 WORKDIR /app
 
