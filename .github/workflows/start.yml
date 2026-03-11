@@ -1,0 +1,90 @@
+name: Start fleeting-chat
+
+on:
+  workflow_dispatch:
+
+jobs:
+  start:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DO_API_TOKEN }}
+
+      - name: Check for existing droplet
+        id: check
+        run: |
+          EXISTING=$(doctl compute droplet list --format Name --no-header | grep -x fleeting-chat || true)
+          if [ -n "$EXISTING" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create droplet
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          doctl compute droplet create fleeting-chat \
+            --image docker-20-04 \
+            --size s-1vcpu-1gb \
+            --region nyc3 \
+            --ssh-keys ${{ secrets.DO_SSH_KEY_ID }} \
+            --wait
+
+      - name: Get droplet IP
+        id: ip
+        run: |
+          IP=$(doctl compute droplet list --format Name,PublicIPv4 --no-header | grep fleeting-chat | awk '{print $2}')
+          echo "ip=$IP" >> $GITHUB_OUTPUT
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DO_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Wait for SSH to be ready
+        run: |
+          for i in $(seq 1 24); do
+            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
+              root@${{ steps.ip.outputs.ip }} exit 2>/dev/null && break
+            echo "Waiting for SSH… ($i/24)"
+            sleep 5
+          done
+          ssh-keyscan -H ${{ steps.ip.outputs.ip }} >> ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          IP: ${{ steps.ip.outputs.ip }}
+        run: |
+          ssh root@$IP bash -s << 'EOF'
+            set -e
+            if docker ps -q -f name=fleeting-chat | grep -q .; then
+              echo "Container already running, nothing to do."
+              exit 0
+            fi
+            if [ ! -d /app/fleeting-chat ]; then
+              git clone https://github.com/${{ github.repository }} /app/fleeting-chat
+            else
+              git -C /app/fleeting-chat pull
+            fi
+            cd /app/fleeting-chat
+            docker build -t fleeting-chat .
+            docker run -d \
+              -p 3000:3000 \
+              -p 3478:3478/udp \
+              -p 3478:3478/tcp \
+              -p 5349:5349/tcp \
+              -e PUBLIC_IP=$IP \
+              --name fleeting-chat \
+              fleeting-chat
+          EOF
+
+      - name: Print URL
+        run: |
+          echo "### fleeting-chat is live" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** http://${{ steps.ip.outputs.ip }}:3000" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run the **Stop fleeting-chat** workflow when you're done." >> $GITHUB_STEP_SUMMARY

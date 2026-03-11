@@ -1,0 +1,23 @@
+name: Stop fleeting-chat
+
+on:
+  workflow_dispatch:
+
+jobs:
+  stop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DO_API_TOKEN }}
+
+      - name: Destroy droplet
+        run: |
+          ID=$(doctl compute droplet list --format ID,Name --no-header | grep fleeting-chat | awk '{print $1}')
+          if [ -z "$ID" ]; then
+            echo "No fleeting-chat droplet found — nothing to do."
+            exit 0
+          fi
+          doctl compute droplet delete "$ID" --force
+          echo "Droplet $ID deleted."
