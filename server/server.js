@@ -150,11 +150,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('chat-message', ({ text, name, timestamp }) => {
-    // broadcast.emit excludes the sender (who already rendered it locally)
-    socket.broadcast.emit('chat-message', { text, name, timestamp });
-  });
-
   socket.on('screen-share-started', ({ streamId }) => {
     const info = clients.get(socket.id);
     if (info) socket.broadcast.emit('screen-share-started', { peerId: info.peerId, streamId });

@@ -43,6 +43,8 @@ let pinnedTileId = null;
 
 // peerId -> { connection: RTCPeerConnection }
 const peers = {};
+// peerId -> RTCDataChannel
+const dataChannels = {};
 // peerId -> display name (for labeling screen share tiles)
 const peerNames = {};
 // peerId -> stream ID of their screen share (so ontrack can identify it)
@@ -332,6 +334,8 @@ function createPeerConnection(peerId) {
     }
   };
 
+  pc.ondatachannel = (e) => { setupDataChannel(peerId, e.channel); };
+
   pc.onconnectionstatechange = () => {
     if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
       cleanupPeer(peerId);
@@ -347,11 +351,21 @@ function cleanupPeer(peerId) {
     peers[peerId].connection.close();
     delete peers[peerId];
   }
+  delete dataChannels[peerId];
   delete peerNames[peerId];
   delete peerScreenStreamIds[peerId];
   delete screenSenders[peerId];
   removeTile('screen-' + peerId); // remove screen share tile if present
   removeTile(peerId);
+}
+
+function setupDataChannel(peerId, dc) {
+  dataChannels[peerId] = dc;
+  dc.onmessage = (e) => {
+    const { text, name, timestamp } = JSON.parse(e.data);
+    appendChatMessage(name, text, timestamp);
+  };
+  dc.onclose = () => { delete dataChannels[peerId]; };
 }
 
 // ── Socket.io ──────────────────────────────────────────────────────────
@@ -377,6 +391,7 @@ socket.on('peers', async (existingPeers) => {
     peerNames[peerId] = name;
     createTile(peerId, name, false);
     const pc = createPeerConnection(peerId);
+    setupDataChannel(peerId, pc.createDataChannel('chat'));
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     socket.emit('offer', { to: peerId, offer });
@@ -432,10 +447,6 @@ socket.on('screen-share-stopped', ({ peerId }) => {
   removeTile('screen-' + peerId);
 });
 
-socket.on('chat-message', ({ text, name, timestamp }) => {
-  appendChatMessage(name, text, timestamp);
-});
-
 // ── Chat ───────────────────────────────────────────────────────────────
 function appendChatMessage(name, text, timestamp) {
   const div = document.createElement('div');
@@ -459,7 +470,10 @@ function sendChatMessage() {
   const text = chatInput.value.trim();
   if (!text) return;
   const timestamp = Date.now();
-  socket.emit('chat-message', { text, name: myName, timestamp });
+  const msg = JSON.stringify({ text, name: myName, timestamp });
+  for (const dc of Object.values(dataChannels)) {
+    if (dc.readyState === 'open') dc.send(msg);
+  }
   appendChatMessage(myName, text, timestamp);
   resetChatInput();
 }
