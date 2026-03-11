@@ -3,11 +3,8 @@ set -e
 
 IP=$1
 
-# ── Wait for cloud-init / unattended-upgrades to release apt lock ────────
-while ! apt-get -q --yes --dry-run upgrade > /dev/null 2>&1; do
-  echo "Waiting for apt lock…"
-  sleep 5
-done
+# ── Wait for cloud-init to finish before touching apt ────────────────────
+cloud-init status --wait
 
 # ── System packages ──────────────────────────────────────────────────────
 apt-get update -q
