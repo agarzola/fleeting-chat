@@ -87,6 +87,18 @@ jobs:
               fleeting-chat
           EOF
 
+      - name: Verify deployment
+        env:
+          IP: ${{ steps.ip.outputs.ip }}
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@$IP bash -s << 'EOF'
+            echo "=== docker ps ==="
+            docker ps -a --filter name=fleeting-chat
+            echo ""
+            echo "=== docker logs ==="
+            docker logs fleeting-chat 2>&1 | tail -30
+          EOF
+
       - name: Print URL
         run: |
           echo "### fleeting-chat is live" >> $GITHUB_STEP_SUMMARY
